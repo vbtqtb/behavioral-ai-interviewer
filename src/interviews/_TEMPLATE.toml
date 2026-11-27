@@ -1,0 +1,180 @@
+# Copy this file, rename it (for example STUDY_A.toml), and edit the values.
+# The filename without .toml is the interview_id the survey sends as interview_id.
+# This file is ignored because its name starts with an underscore.
+#
+# A file that does not match the rules below will fail when the worker starts.
+# Cloudflare keeps the previous deployment running until the new one starts
+# cleanly, so fix the file and deploy again.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# Placeholders
+# Any agent prompt can contain these tokens. They are replaced on each turn.
+# Leave the braces in. Do not add any other {token}; the turn will fail.
+#
+# {current_topic_history}
+#     The current topic's questions and answers, one per line:
+#         Interviewer: "..."
+#         Interviewee: "..."
+#     Used by probe, transition, and summary. Do not drop it from those prompts.
+#
+# {summary}
+#     A running summary of the topics already finished.
+#     On topic 3 this covers topics 1 and 2, and topic 3 itself is in
+#     {current_topic_history}. If summarize is false, this is the full text of
+#     the earlier topics in the same Interviewer / Interviewee form.
+#
+# {topics}
+#     Every topic description from interview_plan, one per line.
+#     The summary agent uses this to see the whole plan.
+#
+# {current_topic}
+#     The topic description for the topic the interview is on right now.
+#
+# {next_interview_topic}
+#     The description of the topic that comes next. The transition agent uses
+#     this when it writes the question that opens the next topic.
+#
+# {question}
+#     The interviewer message the respondent is answering. Used by the moderator.
+#
+# {answer}
+#     The respondent's latest message. Used by the moderator.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Optional label and note for yourself. The app does not show these.
+_name = "SHORT_KEY_FOR_YOUR_INTERVIEW"
+_description = "One sentence about what this interview is for."
+
+# ── Optional features ────────────────────────────────────────────────────────
+# moderate_answers: the moderator agent checks each reply. Off-topic replies
+# are not stored and the respondent sees off_topic_message. After
+# max_flags_allowed such replies the interview stops with flagged_message.
+moderate_answers = true
+
+# moderate_questions: send each generated interviewer question to OpenAI's
+# moderation endpoint before showing it. This only does anything when
+# LLM_PROVIDER is openai. Gemini and Claude skip it and never flag a question.
+moderate_questions = true
+
+# summarize: on each topic change, also ask the summary agent for a running
+# summary and pass it to later prompts as {summary}.
+summarize = true
+
+# How many off-topic replies end the interview. Default 3.
+max_flags_allowed = 3
+
+# ── What the respondent sees ─────────────────────────────────────────────────
+# The interview always opens with this exact text. No model call yet.
+first_question = "What is the main thing you want me to understand about this topic?"
+
+# One entry per topic, in order. `length` is how many interviewer questions
+# that topic gets, counting the question that opened it.
+# The last question of a topic (except the final topic) triggers the
+# transition agent. If a [dag] table is present, the respondent is also shown
+# the graph and asked to accept or correct it before the next topic starts.
+# The final topic does not extract a graph; it moves on to closing_questions.
+interview_plan = [
+  { topic = "Describe the first topic the probe agent should stay on.", length = 2 },
+  { topic = "Describe the second topic the transition agent should move to.", length = 2 },
+]
+
+# Asked in order after the last topic, with no model call. An empty list is
+# allowed: the interview then ends on the answer to the last topic question.
+closing_questions = [
+  "Is there anything we have not covered that you want to add?",
+  "What would you say is the main point, in one or two sentences?",
+]
+
+# Shown if the respondent sends another message after the interview has ended.
+# ---END--- tells the survey page to lock the input. Keep it at the end.
+termination_message = "The interview is over. Please proceed to the next page.---END---"
+
+# Shown when max_flags_allowed off-topic replies have been reached.
+flagged_message = "Please note, too many of your messages have been identified as unusual input. Please proceed to the next page.---END---"
+
+# Shown when the moderator says the reply does not fit the interview.
+# The reply is not stored. The respondent can try again.
+off_topic_message = "I might have misunderstood your response, but it seems you might be trying to steer the interview off topic or that you have provided me with too little context. Can you please try to answer the question again in a different way, preferably with more detail, or say so directly if you prefer not to answer the question?"
+
+# Shown after the last closing question has been answered.
+end_of_interview_message = "Thank you for taking part. Please proceed to the next page.---END---"
+
+# ── Agents ───────────────────────────────────────────────────────────────────
+# Each agent needs a prompt. max_tokens and temperature are optional
+# (defaults used at call time: 300 tokens and temperature 0, except the DAG
+# agent which defaults to 1000 tokens).
+#
+# model is optional. If you set it, that exact model name is sent to every
+# provider, so a Gemini deployment must use a Gemini model name here.
+# If you omit it, the provider default is used:
+#   openai  -> gpt-4o
+#   gemini  -> gemini-2.5-flash-lite
+#   claude  -> claude-haiku-5-5
+# The LLM_MODEL variable, if set on the worker, overrides every agent.
+
+# Running summary of finished topics. Required when summarize = true.
+# You can delete this whole table when summarize = false.
+[summary]
+prompt = """
+Summarise the interview so a colleague can continue it.
+Interview plan:
+{topics}
+Summary so far:
+{summary}
+Current topic:
+{current_topic}
+Current topic transcript:
+{current_topic_history}
+Write only the updated summary.
+"""
+max_tokens = 1000
+
+# Question that opens the next topic. Required when interview_plan has more
+# than one topic. Runs at the same time as the summary agent.
+[transition]
+prompt = """
+Write one open question that moves the interview to the next topic.
+Summary so far:
+{summary}
+Current topic transcript:
+{current_topic_history}
+Next topic:
+{next_interview_topic}
+Write only the question.
+"""
+temperature = 0.7
+max_tokens = 300
+
+# Follow-up inside the current topic. Always required.
+[probe]
+prompt = """
+Write one open follow-up question about the current topic.
+Summary so far:
+{summary}
+Current topic:
+{current_topic}
+Current topic transcript:
+{current_topic_history}
+Write only the question.
+"""
+temperature = 0.7
+max_tokens = 300
+
+# Decides whether a reply belongs in the interview. Required when
+# moderate_answers = true. The reply must contain the word yes or no.
+# The original studies used gpt-4o-mini for this agent on OpenAI.
+[moderator]
+prompt = """
+The interviewer's last message was: '{question}'
+The interviewee replied: '{answer}'
+Does that reply fit an interview? Answer only with a single 'yes' or 'no'.
+"""
+# model = "gpt-4o-mini"
+max_tokens = 2
+
+# Optional. Uncomment to draw a causal graph at the end of every topic
+# except the last, and ask the respondent whether the graph is right.
+# There is no prompt here: the graph instructions are fixed in the program.
+# [dag]
+# max_tokens = 1000
+# model = "gpt-4o"

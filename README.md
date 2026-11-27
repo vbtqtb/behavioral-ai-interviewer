@@ -1,226 +1,56 @@
-# AI Interviewer with DAG-based Mental Model Extraction
+# LLM Behavioral Interviewer for Qualtrics
 
-This project extends the AI interviewer framework by Chopra & Haaland (2023) with a **DAG Agent** that automatically extracts causal Directed Acyclic Graphs (DAGs) from interview transcripts. After each interview topic is completed, the DAG Agent maps the interviewee's stated reasoning into a structured mental model — capturing concepts and causal relationships as a graph that can be stored, compared, and analyzed across participants.
+**English** · [Deutsch](README.de.md)
 
-## Building on Prior Work
+An interviewer based on large language models (LLMs) that runs qualitative interviews inside your Qualtrics survey. It asks an opening question, follows up on what the respondent says, moves through the topics you define, and can draw each respondent's cause-and-effect reasoning as a graph (a DAG) and ask them to confirm it.
 
-This codebase builds on the paper:
+It is built for researchers without a programming background:
 
-> Chopra, Felix and Haaland, Ingar, *Conducting Qualitative Interviews with AI* (2023). CESifo Working Paper No. 10666.
-> Available at SSRN: <https://ssrn.com/abstract=4583756>
+- **No server.** It runs on Cloudflare's free plan.
+- **No terminal.** You set it up with one button and edit interviews on github.com.
+- **Your data stays with you.** Transcripts go into your Qualtrics data and a backup database in your own Cloudflare account.
+- **Choose your LLM.** OpenAI, Google Gemini or Anthropic Claude.
 
-The original framework provides a scalable AI interviewer system supporting multi-topic interview plans, LLM-based probing and topic transition agents, answer moderation, and deployment via Flask. We extend this with a DAG extraction layer that turns qualitative interview responses into structured causal graphs — enabling quantitative analysis of mental models at scale.
+![An interview in the Qualtrics preview: two questions and answers, then the respondent's cause-and-effect graph to confirm](docs/images/qx-05-preview.png)
 
-The original code is licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). Uses and distribution should cite the paper above.
+## Set it up in about 30 minutes
 
----
+| Step | What you do | Time |
+|---|---|---|
+| [1. What you need](docs/en/1-what-you-need.md) | Create the accounts and one API key. | 15 min |
+| [2. Deploy](docs/en/2-deploy.md) | Click the button below, connect GitHub, paste the key. | 5 min |
+| [3. Test](docs/en/3-test.md) | Try the example interview in your browser. | 2 min |
+| [4. Your own interview](docs/en/4-own-interview.md) | Copy the template and write your questions. | as long as you like |
+| [5. Qualtrics](docs/en/5-qualtrics.md) | Import the survey file and enter your address. | 5 min |
+| [6. Your data](docs/en/6-data.md) | Find the transcripts and export them. | |
+| [7. Help](docs/en/7-help.md) | Costs, privacy, changing keys, problems. | |
 
-## What's New: DAG Agent
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/brandesdavid/llm-behavioral-interviewer)
 
-The `DAGAgent` (`app/core/dag_agent.py`) extracts a causal DAG from the interview transcript at each topic transition. It uses the configured LLM with structured JSON output to identify:
+Read [chapter 1](docs/en/1-what-you-need.md) before you click.
 
-- **Nodes**: key concepts explicitly mentioned by the interviewee (2–5 words each, max 10)
-- **Edges**: directed causal relationships between concepts (max 12), labelled (e.g. "leads to", "causes")
+## Example interviews
 
-The DAG is stored in the session history under `topic_dags` and returned in the API response as `dag` when a topic transition occurs.
+| ID | Topic |
+|---|---|
+| `STOCK_MARKET` | Why people do not invest in the stock market. The configuration from Chopra & Haaland (2023). |
+| `HOMELESS_BERLIN` | What people believe causes homelessness in Berlin and keeps people homeless. Draws a cause-and-effect graph after each topic. |
 
-Enable DAG extraction by adding a `"dag"` key to your interview config in `app/parameters.py`:
+## For developers
 
-```python
-"dag": {
-    "model": "gpt-4o",
-    "model_gemini": "gemini-2.5-flash-lite",
-    "max_tokens": 1000
-}
-```
+[How it works](docs/en/how-it-works.md) covers the architecture, local development and tests.
 
----
+## Building on prior work
 
-## LLM Provider
+This project builds on:
 
-Switch between OpenAI and Gemini via environment variable:
+> Chopra, Felix and Haaland, Ingar, *Conducting Qualitative Interviews with AI* (2023). CESifo Working Paper No. 10666. Available at SSRN: <https://ssrn.com/abstract=4583756>
 
-```bash
-# OpenAI (default)
-LLM_PROVIDER=openai
-OPENAI_API_KEY=sk-...
+The original framework provides multi-topic interview plans, LLM probing and transition agents and answer moderation. This version adds the DAG agent, which turns each topic's answers into a causal graph, and runs the whole interviewer on Cloudflare Workers.
 
-# Gemini
-LLM_PROVIDER=gemini
-GEMINI_API_KEY=AIza...
-```
+The original code is licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). Uses and distribution should cite the paper:
 
-Each agent config in `app/parameters.py` supports `model` (OpenAI) and `model_gemini` (Gemini) fields.
-
----
-
-## Interview Configurations
-
-### STOCK_MARKET
-Investigates reasons for non-participation in the stock market (original configuration from Chopra & Haaland 2023).
-
-### HOMELESS_BERLIN
-Explores interviewees' causal beliefs about homelessness in Berlin — what causes it, what keeps people homeless, and what solutions exist. DAG extraction is enabled.
-
-Opening question:
-> *"I am interested in learning more about what you think about homelessness in Berlin. Can you help me understand what you think are the main factors or reasons why people become homeless and what keeps them homeless?"*
-
----
-
-## Environment Variables
-
-All configuration is done via environment variables (or a `.env` file for Docker).
-
-### API Keys & Provider
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LLM_PROVIDER` | `openai` | LLM backend: `openai` or `gemini` |
-| `OPENAI_API_KEY` | — | Required when `LLM_PROVIDER=openai` |
-| `GEMINI_API_KEY` | — | Required when `LLM_PROVIDER=gemini` |
-
-### App Behaviour
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LOG_LEVEL` | `ERROR` | Python log level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-| `DATA_DIR` | `./app/data` | Directory where session JSON files are stored |
-| `PORT` | `8000` | Host port (Docker only, via `docker-compose.yml`) |
-
----
-
-## Interview Configuration (`app/parameters.py`)
-
-Each interview config supports optional feature flags you can toggle without changing any code — just set them to `True` or `False`:
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `moderate_answers` | bool | `True` | Run the **moderator agent** on each interviewee answer — flags off-topic or harmful input |
-| `moderate_questions` | bool | `True` | Check AI-generated questions against OpenAI's moderation endpoint before sending them *(OpenAI only)* |
-| `summarize` | bool | `True` | Run the **summary agent** at each topic transition to maintain a running summary — reduces token usage in long interviews |
-| `max_flags_allowed` | int | `3` | How many flagged answers are allowed before the interview is terminated |
-| `dag` | dict / absent | absent | Add this key to enable **DAG extraction** at topic transitions (see below). Remove the key entirely to disable it |
-
-### Turning agents off to save costs
-
-```python
-"HOMELESS_BERLIN": {
-    "moderate_answers": False,   # skip moderation agent
-    "moderate_questions": False, # skip moderation endpoint
-    "summarize": False,          # skip summary agent (saves tokens on long interviews)
-    "dag": { ... },              # remove this key entirely to disable DAG extraction
-    ...
-}
-```
-
-> **Note:** `moderate_questions` calls the OpenAI moderation endpoint and has no effect when `LLM_PROVIDER=gemini` (Gemini applies safety filters at the API level).
-
----
-
-## Setup
-
-## Option 1: Local development (without Docker)
-
-```bash
-python -m venv env && source env/bin/activate
-pip install -r local_requirements.txt
-python app/app.py
-```
-
-The app runs on `http://127.0.0.1:8000`. Test it:
-```bash
-curl http://127.0.0.1:8000/
-# → Running!
-```
-
-
-## Option 2: Docker (local or server)
-
-```bash
-docker compose up --build
-```
-
-The container exposes port `8000`. Set env vars in a `.env` file next to `docker-compose.yml`:
-
-```env
-LLM_PROVIDER=openai
-OPENAI_API_KEY=sk-...
-LOG_LEVEL=ERROR
-```
-
-Session data is persisted in `./app/data` via a volume mount.
-
-
-## Option 3: Coolify (production, recommended)
-
-1. Push this repo to your Git provider.
-2. In Coolify, create a new **Dockerfile**-based service pointing to the repo.
-3. Set the following environment variables in Coolify:
-
-| Variable | Value |
-|----------|-------|
-| `LLM_PROVIDER` | `openai` or `gemini` |
-| `OPENAI_API_KEY` | your key |
-| `GEMINI_API_KEY` | your key (if using Gemini) |
-| `LOG_LEVEL` | `ERROR` |
-
-4. Set the exposed port to `8000`.
-5. Mount a persistent volume to `/app/data` to preserve session data across deploys.
-6. Deploy. Coolify handles HTTPS and the reverse proxy automatically.
-
----
-
-## Qualtrics Integration
-
-Once deployed, embed the interview directly in a Qualtrics survey.
-
-**Step 1:** In Qualtrics, add these embedded variables to the beginning of your survey flow:
-
-| Variable | Value |
-|----------|-------|
-| `user_id` | unique respondent identifier |
-| `interview_id` | e.g. `HOMELESS_BERLIN` (must match a key in `app/parameters.py`) |
-| `interview_endpoint` | your server URL, e.g. `https://interviews.your-domain.com/` |
-
-**Step 2:** Create a `Text/Graphic` question. Copy the HTML from `Qualtrics/without_voice/Qualtrics.html` (or `with_voice/` for audio input) into the HTML field, and the JS into the JavaScript field.
-
-**Step 3:** Done. The survey will call your server at `interview_endpoint` automatically.
-
-> **Note:** The Qualtrics JS sends requests in the format `{"route": "...", "payload": {...}}` to the root endpoint `/`. The Flask app handles this via a built-in dispatcher — no additional configuration needed.
-
-
-## API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Health check — returns `Running!` |
-| `/healthcheck` | GET | Returns `200` |
-| `/` | POST | Qualtrics dispatcher — accepts `{route, payload}` |
-| `/<interview_id>/<session_id>` | GET | Browser-based test interview |
-| `/next` | POST | Next question — `{session_id, interview_id, user_message}` |
-| `/transcribe` | POST | Transcribe audio — `{audio: base64}` |
-| `/load/<session_id>` | GET | Load session history |
-| `/delete/<session_id>` | GET | Delete session |
-| `/retrieve` | GET | Retrieve all sessions |
-
-
-## Retrieving Stored Interviews
-
-Sessions are stored as JSON files in `app/data/`. Export to CSV:
-
-```bash
-python retrieve.py --data_dir=app/data --output_path=data.csv
-```
-
-To also print the transcripts to stdout:
-```bash
-python retrieve.py --data_dir=app/data --output_path=data.csv --print_chats
-```
-
-
-## Citation
-
-```
+```bibtex
 @article{ChopraHaaland2023,
   title={Conducting Qualitative Interviews with AI},
   author={Chopra, Felix and Haaland, Ingar},

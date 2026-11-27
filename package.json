@@ -1,0 +1,37 @@
+{
+  "name": "ai-interviewer",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev --ip 127.0.0.1 --port 8791",
+    "deploy": "wrangler deploy",
+    "test": "python3 -m unittest discover tests"
+  },
+  "devDependencies": {
+    "wrangler": "^4.164.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "LLM_PROVIDER": {
+        "description": "Which LLM provider runs the interviews: type `openai`, `gemini` or `claude`. Then put that company's API key into the matching field above."
+      },
+      "OPENAI_API_KEY": {
+        "description": "If LLM_PROVIDER is `openai`, replace `none` with your key from [platform.openai.com/api-keys](https://platform.openai.com/api-keys). Otherwise leave `none`."
+      },
+      "GEMINI_API_KEY": {
+        "description": "If LLM_PROVIDER is `gemini`, replace `none` with your key from [aistudio.google.com/apikey](https://aistudio.google.com/apikey). Otherwise leave `none`."
+      },
+      "ANTHROPIC_API_KEY": {
+        "description": "If LLM_PROVIDER is `claude`, replace `none` with your key from [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys). Otherwise leave `none`."
+      },
+      "SESSION_SECRET": {
+        "description": "Optional. Leave `none`, or replace it with any long random text."
+      },
+      "ADMIN_PASSWORD": {
+        "description": "Optional. Leave `none`, or choose a password to download a CSV backup of all interviews at `/export?password=...`."
+      },
+      "DB": {
+        "description": "Optional backup copy of every interview. Keep the suggested name."
+      }
+    }
+  }
+}

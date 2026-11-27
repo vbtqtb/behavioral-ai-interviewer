@@ -1,0 +1,13 @@
+# Copy to .dev.vars for `npx wrangler dev`. .dev.vars is not committed.
+# The Deploy to Cloudflare form pre-fills its secret fields with these values.
+# "none" means "not used". Replace it only for the key that matches LLM_PROVIDER.
+
+OPENAI_API_KEY=none
+GEMINI_API_KEY=none
+ANTHROPIC_API_KEY=none
+
+# Optional. If "none", the session signature key is derived from the provider API key.
+SESSION_SECRET=none
+
+# Optional. Enables GET /export?password=... when the DB binding exists.
+ADMIN_PASSWORD=none

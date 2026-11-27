@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "ai-interviewer",
+  "main": "src/entry.py",
+  "compatibility_date": "2026-11-18",
+  // python_workers enables the Python runtime.
+  // disable_python_external_sdk is required: without it, `from workers import ...` fails
+  // on a worker that has no third-party Python packages.
+  "compatibility_flags": ["python_workers", "disable_python_external_sdk"],
+  // Interview TOML is not Python, so it is not bundled unless a Data rule names it.
+  "rules": [{ "type": "Data", "globs": ["**/*.toml"], "fallthrough": true }],
+  // Keeps worker logs in the dashboard (Observability tab). Free plan includes them.
+  "observability": { "enabled": true },
+  // Change to "gemini" or "claude" and set the matching secret
+  // (GEMINI_API_KEY or ANTHROPIC_API_KEY). Optional LLM_MODEL overrides every agent.
+  "vars": {
+    "LLM_PROVIDER": "openai"
+  },
+  // Optional backup of each turn. Omit database_id on purpose: Wrangler 4.45+
+  // provisions the database on `wrangler deploy` and `wrangler dev` uses a local
+  // one. Interviews still run if you delete this block. Qualtrics embedded data
+  // is the primary store. Set the ADMIN_PASSWORD secret to enable GET /export.
+  // If a deploy ever rejects a binding without database_id, create the database
+  // in the dashboard, then set database_name and database_id here.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ai-interviewer"
+    }
+  ]
+}

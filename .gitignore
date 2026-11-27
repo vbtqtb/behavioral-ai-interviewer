@@ -27,6 +27,9 @@ wheels/
 *.egg
 
 .env
+.dev.vars
+node_modules/
+.wrangler/
 
 ## Application 
 *.csv
